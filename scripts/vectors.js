@@ -77,13 +77,13 @@ class Vector3 {
         this.z = a.z;
     }
 
-    add(...vectors) {
-        this.set(Vector3.add(...vectors));
+    add(vector) {
+        this.set(Vector3.add(this, vector));
         return this;
     }
 
-    subtract(...vectors) {
-        this.set(Vector3.subtract(...vectors));
+    subtract(vector) {
+        this.set(Vector3.subtract(this, vector));
         return this;
     }
 

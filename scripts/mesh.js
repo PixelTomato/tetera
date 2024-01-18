@@ -1,3 +1,4 @@
+import { readFile } from "./file.js";
 import { Vector3 } from "./vectors.js";
 
 class Mesh {
@@ -6,42 +7,56 @@ class Mesh {
         this.indices = [];
         this.colors = [];
 
-        if (path) this.load(path);
+        if (typeof (path) == "string") this.load(path);
     }
 
     load(path) {
-        fetch(path)
-            .then(r => r.text())
-            .then(data => {
-                const parsed = data.split("\n");
+        const data = readFile(path);
 
-                for (let i = 0; i < parsed.length; i++) {
-                    const line = parsed[i].split(" ");
+        const parsed = data.split("\n");
 
-                    switch (line[0]) {
-                        case "v":
-                            this.vertices.push(new Vector3(line[1], line[2], line[3]));
-                            break;
-                        case "f":
-                            for (let a = 1; a < line.length - 1; a++) {
-                                const face = line[a].split("/");
+        for (let i = 0; i < parsed.length; i++) {
+            const line = parsed[i].split(" ");
 
-                                const index = face[0] - 1;
-                                const uv = face[1];
-                                const normal = face[2];
+            switch (line[0]) {
+                case "v":
+                    this.vertices.push(new Vector3(
+                        parseFloat(line[1]),
+                        parseFloat(line[2]),
+                        parseFloat(line[3]),
+                    ));
+                    break;
+                case "f":
+                    for (let a = 1; a < line.length; a++) {
+                        const face = line[a].split("/");
 
-                                this.indices.push(index);
-                            }
-                            break;
+                        const index = face[0] - 1;
+                        const uv = face[1];
+                        const normal = face[2];
+
+                        this.indices.push(index);
                     }
-                }
-            });
+                    break;
+            }
+        }
+    }
+
+    set(mesh) {
+        this.vertices = mesh.vertices;
+        this.indices = mesh.indices;
+        this.colors = mesh.colors;
     }
 
     append(mesh) {
-        this.vertices.push(mesh.vertices);
-        this.indices.push(mesh.indices);
-        this.colors.push(mesh.colors);
+        this.vertices.push(...mesh.vertices);
+        this.indices.push(...mesh.indices);
+        this.colors.push(...mesh.colors);
+    }
+
+    translate(offset) {
+        for (let i = 0; i < this.vertices.length; i++) {
+            this.vertices[i].add(offset);
+        }
     }
 }
 
