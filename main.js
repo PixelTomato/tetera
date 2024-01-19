@@ -8,7 +8,7 @@ const ctx = Canvas.init("canvas");
 const fov = Canvas.width / 2;
 Input.init();
 
-const icosphereMesh = new Mesh("./models/icosphere.obj");
+const icosphereMesh = new Mesh("./models/suzanne.obj");
 
 //icosphereMesh.translate(new Vector3(0, 0, -2));
 
@@ -16,11 +16,11 @@ const icosphereMesh = new Mesh("./models/icosphere.obj");
 // TODO: Transformations done before being appended to scene list.
 // TODO: Depth sorting and projection done last before drawing.
 
-function rotateY(point, amt) {
+function rotateY(point, sin, cos) {
     return new Vector3(
-        point.z * Math.sin(amt) + point.x * Math.cos(amt),
+        point.z * sin + point.x * cos,
         point.y,
-        point.z * Math.cos(amt) - point.x * Math.sin(amt),
+        point.z * cos - point.x * sin,
     );
 }
 
@@ -32,13 +32,17 @@ function translate(point, offset) {
     );
 }
 
-function project(point) {
-    let _point = rotateY(point, performance.now() / 1000);
-    _point = translate(_point, new Vector3(0, 0, -2));
+function transform(point, sin, cos) {
+    let out = rotateY(point, sin, cos);
+    out = translate(out, new Vector3(0, Math.sin(performance.now() / 500) / 8, -3));
 
+    return out;
+}
+
+function project(point) {
     return new Vector2(
-        _point.x * fov / _point.z + Canvas.width / 2,
-        _point.y * fov / _point.z + Canvas.height / 2,
+        point.x * fov / point.z + Canvas.width / 2,
+        point.y * fov / point.z + Canvas.height / 2,
     );
 }
 
@@ -66,6 +70,13 @@ class Face {
             (this.a.z + this.b.z + this.c.z) / 3,
         );
     }
+
+    get normal() {
+        const s1 = Vector3.subtract(this.a, this.b);
+        const s2 = Vector3.subtract(this.b, this.c);
+
+        return Vector3.dotProduct(s1, s2);
+    }
 }
 
 function main() {
@@ -74,28 +85,63 @@ function main() {
 
     Canvas.clear();
 
+    // Create the scene and append mesh vertices
+    debug.start("Scene Creation");
     let scene = new Mesh();
     scene.append(icosphereMesh);
+    debug.end("Scene Creation", "ms");
 
     // Graphics code goes here :)
     ctx.strokeStyle = "white";
 
     let faces = [];
 
+    // Bundle vertices into triangular faces
+    const amt = performance.now() / 500 / 3;
+    const sin = Math.sin(amt);
+    const cos = Math.cos(amt);
+
+    debug.start("Transforms");
     for (let i = 0; i < scene.indices.length; i += 3) {
-        const a = project(scene.vertices[scene.indices[i]]);
-        const b = project(scene.vertices[scene.indices[i + 1]]);
-        const c = project(scene.vertices[scene.indices[i + 2]]);
+        const a = transform(scene.vertices[scene.indices[i]], sin, cos);
+        const b = transform(scene.vertices[scene.indices[i + 1]], sin, cos);
+        const c = transform(scene.vertices[scene.indices[i + 2]], sin, cos);
 
-        faces.push([a, b, c]);
+        faces.push(new Face(a, b, c));
     }
+    debug.end("Transforms", "ms");
 
+    // Apply a simple depth sort
+    debug.start("Depth Sort");
+    faces.sort((a, b) => Vector3.squaredDistance(b.center, Vector3.zero) - Vector3.squaredDistance(a.center, Vector3.zero));
+    debug.end("Depth Sort", "ms");
+
+    // Project face vertices to screenspace
+    debug.start("Projection");
     for (let i = 0; i < faces.length; i++) {
         const face = faces[i];
-        drawTriangle(face[0], face[1], face[2], true, false);
+        const a = project(face.a);
+        const b = project(face.b);
+        const c = project(face.c);
+
+        faces[i] = [a, b, c, face.normal];
     }
+    debug.end("Projection", "ms");
+
+    // Draw faces in furthest-first order
+    debug.start("Render Pass");
+    for (let i = 0; i < faces.length; i++) {
+        const face = faces[i];
+
+        ctx.fillStyle = `hsl(218.54deg, 79.19%, ${66.08 - face[3] * 1.4}%)`;
+        ctx.strokeStyle = ctx.fillStyle;
+
+        drawTriangle(face[0], face[1], face[2], true, true);
+    }
+    debug.end("Render Pass", "ms");
 
     debug.end("Frame Time", "ms");
+
     debug.draw();
 
     window.requestAnimationFrame(main);
