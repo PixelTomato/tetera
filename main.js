@@ -5,6 +5,7 @@ import { Debug } from "./scripts/debug.js";
 import { Mesh } from "./scripts/mesh.js";
 
 const ctx = Canvas.init("canvas");
+const fov = Canvas.width / 2;
 Input.init();
 
 const icosphereMesh = new Mesh("./models/icosphere.obj");
@@ -36,8 +37,8 @@ function project(point) {
     _point = translate(_point, new Vector3(0, 0, -2));
 
     return new Vector2(
-        _point.x * 400 / _point.z + Canvas.width / 2,
-        _point.y * 400 / _point.z + Canvas.height / 2,
+        _point.x * fov / _point.z + Canvas.width / 2,
+        _point.y * fov / _point.z + Canvas.height / 2,
     );
 }
 
@@ -49,6 +50,22 @@ function drawTriangle(a, b, c, stroke, fill) {
     ctx.lineTo(a.x, a.y);
     if (fill) ctx.fill();
     if (stroke) ctx.stroke();
+}
+
+class Face {
+    constructor(a, b, c) {
+        this.a = a;
+        this.b = b;
+        this.c = c;
+    }
+
+    get center() {
+        return new Vector3(
+            (this.a.x + this.b.x + this.c.x) / 3,
+            (this.a.y + this.b.y + this.c.y) / 3,
+            (this.a.z + this.b.z + this.c.z) / 3,
+        );
+    }
 }
 
 function main() {
@@ -63,12 +80,19 @@ function main() {
     // Graphics code goes here :)
     ctx.strokeStyle = "white";
 
+    let faces = [];
+
     for (let i = 0; i < scene.indices.length; i += 3) {
         const a = project(scene.vertices[scene.indices[i]]);
         const b = project(scene.vertices[scene.indices[i + 1]]);
         const c = project(scene.vertices[scene.indices[i + 2]]);
 
-        drawTriangle(a, b, c, true, false);
+        faces.push([a, b, c]);
+    }
+
+    for (let i = 0; i < faces.length; i++) {
+        const face = faces[i];
+        drawTriangle(face[0], face[1], face[2], true, false);
     }
 
     debug.end("Frame Time", "ms");

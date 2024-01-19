@@ -71,6 +71,18 @@ class Vector3 {
         return vectors.reduce((a, b) => new Vector3(a.x - b.x, a.y - b.y, a.z + b.z), Vector3.zero);
     }
 
+    static crossProduct(a, b) {
+        return new Vector3(
+            a.y * b.z - a.z * b.y,
+            a.z * b.x - a.x * b.z,
+            a.x * b.y - a.y * b.x,
+        );
+    }
+
+    static dotProduct(a, b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
     set(a) {
         this.x = a.x;
         this.y = a.y;
