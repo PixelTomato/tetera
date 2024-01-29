@@ -19,7 +19,7 @@ class Debug {
 
         this.lines.forEach(line => {
             const name = line[0];
-            const value = isNaN(line[1]) ? line[1] : (Math.round(line[1] * 100) / 100).toFixed(1);
+            const value = isNaN(line[1]) ? line[1] : line[1].toFixed(2);
             const unit = line[2] || "";
             this.ctx.fillText(`${name} - ${value} ${unit}`, 2, y += 12);
         });
