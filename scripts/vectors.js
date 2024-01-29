@@ -89,6 +89,12 @@ class Vector3 {
         this.z = a.z;
     }
 
+    setXYZ(x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+    }
+
     add(vector) {
         this.set(Vector3.add(this, vector));
         return this;
@@ -99,12 +105,40 @@ class Vector3 {
         return this;
     }
 
+    scale(factor) {
+        this.x *= factor;
+        this.y *= factor;
+        this.z *= factor;
+        return this;
+    }
+
     get magnitude() {
         return Math.sqrt(this.x ** 2 + this.y ** 2 + this.z ** 2);
     }
 
+    get normalized() {
+        const magnitude = this.magnitude;
+        return new Vector3(
+            this.x / magnitude,
+            this.y / magnitude,
+            this.z / magnitude,
+        );
+    }
+
+    scaled(factor) {
+        return new Vector3(
+            this.x * factor,
+            this.y * factor,
+            this.z * factor,
+        );
+    }
+
     toString() {
         return `Vector3(x: {this.x}, y: {this.y}, z: {this.z})`;
+    }
+
+    copy() {
+        return new Vector3(this.x, this.y, this.z);
     }
 }
 

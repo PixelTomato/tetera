@@ -1,48 +1,33 @@
 import { Vector2, Vector3 } from "./scripts/vectors.js";
+import { Transform } from "./scripts/transforms.js";
 import { Canvas } from "./scripts/canvas.js";
 import { Input } from "./scripts/input.js";
 import { Debug } from "./scripts/debug.js";
 import { Mesh } from "./scripts/mesh.js";
 
 const ctx = Canvas.init("canvas");
-const fov = Canvas.width / 2;
 Input.init();
 
 const icosphereMesh = new Mesh("./models/suzanne.obj");
 
-//icosphereMesh.translate(new Vector3(0, 0, -2));
+const transform = new Transform();
 
-// TODO: Arrays of scene vertices/indices that meshes are appended to.
-// TODO: Transformations done before being appended to scene list.
-// TODO: Depth sorting and projection done last before drawing.
+let rot = Math.sin(performance.now() / 500) / 8;
 
-function rotateY(point, sin, cos) {
-    return new Vector3(
-        point.z * sin + point.x * cos,
-        point.y,
-        point.z * cos - point.x * sin,
-    );
-}
+function transforms(point, sin, cos) {
+    transform.copyRotation(sin, cos);
 
-function translate(point, offset) {
-    return new Vector3(
-        point.x + offset.x,
-        point.y + offset.y,
-        point.z + offset.z,
-    );
-}
-
-function transform(point, sin, cos) {
-    let out = rotateY(point, sin, cos);
-    out = translate(out, new Vector3(0, Math.sin(performance.now() / 500) / 8, -3));
-
-    return out;
+    return transform
+        .set(point)
+        .rotateY()
+        .translate(new Vector3(0, sin / 5, -3))
+        .output
 }
 
 function project(point) {
     return new Vector2(
-        point.x * fov / point.z + Canvas.width / 2,
-        point.y * fov / point.z + Canvas.height / 2,
+        point.x * Canvas.fov / point.z + Canvas.halfWidth,
+        point.y * Canvas.fov / point.z + Canvas.halfHeight,
     );
 }
 
@@ -76,6 +61,8 @@ class Face {
         const s2 = Vector3.subtract(this.b, this.c);
 
         return Vector3.dotProduct(s1, s2);
+
+        //return Vector3.dotProduct(Vector3.crossProduct(s1, s2), new Vector3(0, 0, 0));
     }
 }
 
@@ -97,17 +84,18 @@ function main() {
     let faces = [];
 
     // Bundle vertices into triangular faces
+    rot = Math.sin(performance.now() / 500) / 8;
     const amt = performance.now() / 500 / 3;
     const sin = Math.sin(amt);
     const cos = Math.cos(amt);
 
     debug.start("Transforms");
     for (let i = 0; i < scene.indices.length; i += 3) {
-        const a = transform(scene.vertices[scene.indices[i]], sin, cos);
-        const b = transform(scene.vertices[scene.indices[i + 1]], sin, cos);
-        const c = transform(scene.vertices[scene.indices[i + 2]], sin, cos);
-
-        faces.push(new Face(a, b, c));
+        faces.push(new Face(
+            transforms(scene.vertices[scene.indices[i]], sin, cos),
+            transforms(scene.vertices[scene.indices[i + 1]], sin, cos),
+            transforms(scene.vertices[scene.indices[i + 2]], sin, cos),
+        ));
     }
     debug.end("Transforms", "ms");
 
@@ -120,11 +108,12 @@ function main() {
     debug.start("Projection");
     for (let i = 0; i < faces.length; i++) {
         const face = faces[i];
-        const a = project(face.a);
-        const b = project(face.b);
-        const c = project(face.c);
-
-        faces[i] = [a, b, c, face.normal];
+        faces[i] = [
+            project(face.a),
+            project(face.b),
+            project(face.c),
+            face.normal
+        ];
     }
     debug.end("Projection", "ms");
 
